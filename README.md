@@ -1,0 +1,1 @@
+# CDPH_Healthcare_Facilities_affected_by_LA_wildfires2025
