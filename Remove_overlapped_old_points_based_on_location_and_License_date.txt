@@ -1,0 +1,58 @@
+"""
+
+In summary, this code is designed to identify and remove overlapping healthcare facility records from a geodatabase based on their license expiration dates, 
+ensuring that only the facility with the most recent expiration date remains for each overlapping location.
+
+"""
+
+import arcpy
+
+# Set the environment workspace
+arcpy.env.workspace = r"D:\PublicHealth_presentation\MobileGDB\PublicHealth_Mobile_GDB.geodatabase"
+
+# Define the feature class
+feature_class = "CDPH_Healthcare_Facilities"
+
+# Create a list to store points for deletion
+points_to_delete = []
+
+# Create a feature layer for the feature class
+arcpy.management.MakeFeatureLayer(feature_class, "temp_layer")
+
+# Use a search cursor to find overlapping points
+with arcpy.da.SearchCursor("temp_layer", ["SHAPE@", "LICENSE_EX_DATE", "OBJECTID"]) as cursor:
+    point_dict = {}
+
+    # Collect points into a dictionary based on their geometry
+    for row in cursor:
+        geom = row[0].WKT  # Use WKT for geometry representation
+        date = row[1]
+        oid = row[2]
+
+        if geom not in point_dict:
+            point_dict[geom] = []
+        
+        point_dict[geom].append((date, oid))
+
+# Now, process each group of overlapping points
+for geom, points in point_dict.items():
+    # Filter out None dates
+    valid_points = [p for p in points if p[0] is not None]  # Exclude empty LICENSE_EX_DATE
+
+    # Sort points by date (newest first)
+    valid_points.sort(key=lambda x: x[0], reverse=True)  # Sort by date descending
+
+    # Keep only the point with the latest date
+    if valid_points:
+        latest_point = valid_points[0]  # This is the point to keep
+        for point in valid_points[1:]:
+            points_to_delete.append(point[1])  # Collect OIDs for deletion
+
+# Delete the points identified for deletion
+if points_to_delete:
+    with arcpy.da.UpdateCursor(feature_class, ["OBJECTID"]) as cursor:
+        for row in cursor:
+            if row[0] in points_to_delete:
+                cursor.deleteRow()
+
+print("Completed the process of removing overlapping points based on LICENSE_EX_DATE.")
