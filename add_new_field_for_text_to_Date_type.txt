@@ -1,0 +1,33 @@
+import arcpy
+from datetime import datetime
+
+# Set the layer name
+layer_name = "CDPH_Healthcare_Facilities"
+
+# Start an update cursor to edit the layer
+with arcpy.da.UpdateCursor(layer_name, ["LICENSE_EX", "LICENSE_EX_DATE"]) as cursor:
+    for row in cursor:
+        license_ex_value = row[0]  # Get the value from LICENSE_EX field
+        
+        # Print the value being processed for debugging
+        print(f"Processing LICENSE_EX value: {license_ex_value}")
+        
+        if license_ex_value:  # Check if the value is not empty
+            try:
+                # Convert the string to a date object
+                date_value = datetime.strptime(license_ex_value, "%Y-%m-%d").date()
+                row[1] = date_value  # Assign the converted date to LICENSE_EX_DATE
+                print(f"Converted {license_ex_value} to {date_value}")  # Debug print
+            except ValueError as e:
+                # Handle any potential errors in date conversion
+                print(f"Error converting value: {license_ex_value} - {e}")
+        
+        else:
+            # If the LICENSE_EX field is empty, set LICENSE_EX_DATE to None
+            row[1] = None
+            print("LICENSE_EX was empty, setting LICENSE_EX_DATE to None.")
+        
+        # Update the row in the cursor
+        cursor.updateRow(row)
+
+print("Field update complete.")
